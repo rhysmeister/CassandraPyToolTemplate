@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+
+from cassandra.cluster import Cluster
+import configparser, argparse, traceback
+
+parser = argparse.ArgumentParser(description='Some interesting text goes here.')
+parser.add_argument('-c', '--config', type=str, default='./pycqltool.config', help='Configuration file')
+parser.add_argument('-d', '--debug', action="store_true", default=False, help='Enable debugging output')
+
+args = parser.parse_args()
+
+hostname = None
+port = None
+keyspace = None
+
+try:
+    config = configparser.ConfigParser()
+    config.read(args.config)
+    if args.debug:
+        print(config.sections())
+    hostname = config["pycqltool"]["hostname"]
+    port = config["pycqltool"]["port"]
+    keyspace = config["pycqltool"].get("keyspace", "system")
+except Exception as excep:
+    print("The was an error with the config file")
+    if args.debug:
+        traceback.print_stack()
+    raise excep
+
+try:
+
+    cluster = Cluster(hostname.split(","),
+                      port=port)
+    session = cluster.connect()
+    session.set_keyspace(keyspace)
+
+    # Do something in Cassandra
+    rows = session.execute('DESC TABLES')
+    for row in rows:
+        print(row[0])
+
+except Exception as excep:
+    print("The was an error communicating with Cassandra")
+    if args.debug:
+        traceback.print_stack()
+    raise excep
